@@ -298,7 +298,7 @@
       <div class="gdd-content" id="gdd-output"></div>
     </div>
     <div class="btn-row">
-      <button class="btn btn-secondary" id="btn-back-to-1">✏️ Редактировать описание</button>
+      <button class="btn btn-secondary" id="btn-edit-gdd">✏️ Редактировать драфт</button>
       <button class="btn btn-primary" id="btn-generate-proto">🚀 Сгенерировать прототип</button>
     </div>
   </div>
@@ -498,8 +498,28 @@ document.getElementById('btn-generate-gdd').addEventListener('click', async () =
   }
 });
 
-document.getElementById('btn-back-to-1').addEventListener('click', () => {
-  showScreen(1);
+document.getElementById('btn-edit-gdd').addEventListener('click', () => {
+  const output = document.getElementById('gdd-output');
+  const editBtn = document.getElementById('btn-edit-gdd');
+
+  if (editBtn.dataset.editing === 'true') {
+    // Сохраняем
+    const textarea = output.querySelector('textarea');
+    currentGDD = textarea.value;
+    renderGDD(currentGDD);
+    editBtn.textContent = '✏️ Редактировать драфт';
+    editBtn.dataset.editing = 'false';
+  } else {
+    // Переходим в режим редактирования
+    output.innerHTML = '';
+    const textarea = document.createElement('textarea');
+    textarea.value = currentGDD;
+    textarea.style.cssText = 'width:100%;min-height:280px;background:#0d0d14;color:#e2e8f0;border:1px solid #2a2a3a;border-radius:8px;padding:14px;font-size:14px;font-family:system-ui;line-height:1.6;resize:vertical;outline:none;';
+    output.appendChild(textarea);
+    textarea.focus();
+    editBtn.textContent = '💾 Сохранить';
+    editBtn.dataset.editing = 'true';
+  }
 });
 
 document.getElementById('btn-generate-proto').addEventListener('click', async () => {
