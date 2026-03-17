@@ -395,22 +395,26 @@ function showScreen(n) {
 // API key: from URL ?key=gsk_... or localStorage
 const _urlKey = new URLSearchParams(window.location.search).get('key');
 if (_urlKey) localStorage.setItem('groq_key', _urlKey);
-const GROQ_API_KEY = localStorage.getItem('groq_key') || '';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
+function getKey() {
+  return localStorage.getItem('groq_key') || '';
+}
+
 async function groqCall(systemPrompt, userMessage) {
-  const key = localStorage.getItem('groq_key') || '';
+  let key = getKey();
   if (!key) {
-    const entered = prompt('Введи Groq API ключ (получить бесплатно на console.groq.com):');
-    if (entered && entered.startsWith('gsk_')) {
-      localStorage.setItem('groq_key', entered);
+    const entered = prompt('Введи Groq API ключ (бесплатно: console.groq.com → API Keys):');
+    if (entered && entered.trim().startsWith('gsk_')) {
+      localStorage.setItem('groq_key', entered.trim());
+      key = entered.trim();
     } else {
-      throw new Error('API ключ не введён. Получи бесплатный ключ на console.groq.com');
+      throw new Error('Ключ не введён или неверный формат');
     }
   }
   const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${localStorage.getItem('groq_key')}`, 'Content-Type': 'application/json' },
+    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: GROQ_MODEL,
       messages: [
