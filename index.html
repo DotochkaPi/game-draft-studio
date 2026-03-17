@@ -620,35 +620,35 @@ async function doGenArt() {
     const encoded = encodeURIComponent(prompt + ', game concept art, high quality, vibrant colors');
     const seed = Math.floor(Math.random() * 99999);
     
-    // Пробуем загрузить с таймаутом и повтором
-    async function tryLoadImage(url, retries = 3) {
-      for (let i = 0; i < retries; i++) {
-        try {
-          await new Promise((resolve, reject) => {
-            const testImg = new Image();
-            const timeout = setTimeout(() => reject(new Error('timeout')), 20000);
-            testImg.onload = () => { clearTimeout(timeout); resolve(); };
-            testImg.onerror = () => { clearTimeout(timeout); reject(new Error('load error')); };
-            testImg.src = url + '&attempt=' + i;
-          });
-          return url + '&attempt=' + i;
-        } catch(e) {
-          if (i < retries - 1) {
-            document.getElementById('art-loading').textContent = `⏳ Генерирую изображение... (попытка ${i+2}/${retries})`;
-            await new Promise(r => setTimeout(r, 2000));
-          }
-        }
-      }
-      throw new Error('Не удалось загрузить изображение после нескольких попыток');
-    }
-
-    const baseUrl = `https://image.pollinations.ai/prompt/${encoded}?width=800&height=500&seed=${seed}&nologo=true`;
-    const finalUrl = await tryLoadImage(baseUrl);
+    // Пробуем несколько URL по очереди
+    const urls = [
+      `https://image.pollinations.ai/prompt/${encoded}?width=800&height=500&seed=${seed}&nologo=true&model=flux`,
+      `https://image.pollinations.ai/prompt/${encoded}?width=800&height=500&seed=${seed}&nologo=true`,
+      `https://image.pollinations.ai/prompt/${encoded}?width=512&height=512&seed=${seed+1}&nologo=true`,
+    ];
     
-    const img = document.getElementById('art-img');
-    img.src = finalUrl;
-    document.getElementById('art-loading').style.display = 'none';
-    img.style.display = 'block';
+    let loaded = false;
+    for (let i = 0; i < urls.length; i++) {
+      document.getElementById('art-loading').textContent = `⏳ Генерирую изображение... попытка ${i+1}/${urls.length}`;
+      try {
+        await new Promise((resolve, reject) => {
+          const ti = new Image();
+          const to = setTimeout(() => reject(new Error('timeout')), 25000);
+          ti.onload = () => { clearTimeout(to); resolve(); };
+          ti.onerror = () => { clearTimeout(to); reject(new Error('err')); };
+          ti.src = urls[i];
+        });
+        const img = document.getElementById('art-img');
+        img.src = urls[i];
+        document.getElementById('art-loading').style.display = 'none';
+        img.style.display = 'block';
+        loaded = true;
+        break;
+      } catch(e) {
+        if (i < urls.length - 1) await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    if (!loaded) throw new Error('Сервис генерации изображений недоступен. Попробуй через пару минут.');
     document.getElementById('art-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } catch(e) {
     alert('Ошибка: ' + e.message);
