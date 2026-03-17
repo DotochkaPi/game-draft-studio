@@ -621,20 +621,6 @@ document.getElementById('btn-copy-prompt').addEventListener('click', () => {
   });
 });
 
-document.getElementById('btn-generate-proto').addEventListener('click', async () => {
-  showScreen(3);
-  document.getElementById('proto-loading').style.display = 'flex';
-  document.getElementById('proto-result').style.display = 'none';
-
-  const protoHTML = await generatePrototype(currentGDD);
-
-  const frame = document.getElementById('proto-frame');
-  frame.srcdoc = protoHTML;
-
-  document.getElementById('proto-loading').style.display = 'none';
-  document.getElementById('proto-result').style.display = 'block';
-});
-
 // Скачать документ
 function downloadGDD() {
   if (!currentGDD) return;
