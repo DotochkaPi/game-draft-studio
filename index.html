@@ -318,9 +318,18 @@
     <!-- Блок с промптом для арта -->
     <div id="art-result" style="display:none;margin-top:16px">
       <div class="card" style="padding:16px">
-        <div style="font-size:13px;color:#64748b;margin-bottom:8px;font-weight:600;letter-spacing:.5px">🎨 ПРОМПТ ДЛЯ SORA / MIDJOURNEY / DALL-E</div>
-        <div id="art-prompt-text" style="font-size:14px;line-height:1.6;color:#e2e8f0;white-space:pre-wrap;word-break:break-word;background:#0d0d14;border-radius:8px;padding:12px;border:1px solid #2a2a3a"></div>
-        <button class="btn btn-ghost" id="btn-copy-prompt" style="margin-top:10px;width:100%">📋 Копировать промпт</button>
+        <div style="font-size:13px;color:#64748b;margin-bottom:8px;font-weight:600;letter-spacing:.5px">🎨 КОНЦЕПТ-АРТ ИГРЫ</div>
+        <div id="art-img-wrap" style="text-align:center;min-height:200px;display:flex;align-items:center;justify-content:center">
+          <div id="art-loading" style="color:#64748b;font-size:14px">Генерирую изображение...</div>
+          <img id="art-img" style="display:none;width:100%;border-radius:8px;border:1px solid #2a2a3a" alt="Game concept art"/>
+        </div>
+        <div style="font-size:12px;color:#374151;margin-top:10px;padding:8px;background:#0d0d14;border-radius:6px;border:1px solid #1a1a2a">
+          <span style="color:#4b5563">Промпт: </span><span id="art-prompt-text" style="color:#6b7280"></span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-ghost" id="btn-copy-prompt" style="flex:1">📋 Копировать промпт</button>
+          <button class="btn btn-ghost" id="btn-regen-art" style="flex:1">🔄 Перегенерировать</button>
+        </div>
       </div>
     </div>
     <!-- Кнопки режима редактирования -->
@@ -578,38 +587,49 @@ document.getElementById('btn-regen-gdd').addEventListener('click', async () => {
 
 
 // Генерация арт-промпта
-document.getElementById('btn-gen-art').addEventListener('click', async () => {
+// Генерация арта: Groq промпт → Pollinations картинка
+async function doGenArt() {
   const btn = document.getElementById('btn-gen-art');
   btn.disabled = true;
   btn.textContent = '⏳ Генерирую...';
-  document.getElementById('art-result').style.display = 'none';
+  document.getElementById('art-result').style.display = 'block';
+  document.getElementById('art-loading').style.display = 'block';
+  document.getElementById('art-img').style.display = 'none';
 
   try {
     const prompt = await groqCall(
-      `You are a professional art director for game concept art. Based on the game design document, write a detailed image generation prompt in English for Sora, Midjourney, or DALL-E.
-
-Style requirements:
-- Stylized game key art or concept art
-- Vibrant colors, dramatic lighting
-- Show the core gameplay moment or main character in action
-- Include environment/world details
-- Specify art style (pixel art / cartoon / realistic / isometric etc based on the game type)
-- No text or UI elements in the image
-- 2-3 sentences, dense with visual detail
-
-Output ONLY the prompt, nothing else.`,
+      `You are a game art director. Write an image generation prompt in English for this game. Style: stylized game key art, vibrant colors, dramatic lighting, show core gameplay or main character, specify art style (pixel art/cartoon/realistic/isometric). No text or UI. Output ONLY the prompt, 1-2 sentences.`,
       `Game Design Document:\n${currentGDD}`
     );
 
     document.getElementById('art-prompt-text').textContent = prompt;
-    document.getElementById('art-result').style.display = 'block';
+
+    const encoded = encodeURIComponent(prompt + ', game concept art, high quality');
+    const seed = Math.floor(Math.random() * 99999);
+    const imgUrl = `https://image.pollinations.ai/prompt/${encoded}?width=800&height=500&seed=${seed}&nologo=true`;
+
+    const img = document.getElementById('art-img');
+    img.onload = () => {
+      document.getElementById('art-loading').style.display = 'none';
+      img.style.display = 'block';
+    };
+    img.onerror = () => {
+      document.getElementById('art-loading').textContent = '⚠️ Ошибка загрузки. Попробуй ещё раз.';
+    };
+    img.src = imgUrl;
     document.getElementById('art-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } catch(e) {
     alert('Ошибка: ' + e.message);
+    document.getElementById('art-result').style.display = 'none';
   } finally {
     btn.disabled = false;
     btn.textContent = '🎨 Сгенерировать арт';
   }
+}
+
+document.getElementById('btn-gen-art').addEventListener('click', doGenArt);
+document.getElementById('btn-regen-art').addEventListener('click', doGenArt);
+
 });
 
 document.getElementById('btn-copy-prompt').addEventListener('click', () => {
