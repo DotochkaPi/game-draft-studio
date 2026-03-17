@@ -399,9 +399,18 @@ const GROQ_API_KEY = localStorage.getItem('groq_key') || '';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 async function groqCall(systemPrompt, userMessage) {
+  const key = localStorage.getItem('groq_key') || '';
+  if (!key) {
+    const entered = prompt('Введи Groq API ключ (получить бесплатно на console.groq.com):');
+    if (entered && entered.startsWith('gsk_')) {
+      localStorage.setItem('groq_key', entered);
+    } else {
+      throw new Error('API ключ не введён. Получи бесплатный ключ на console.groq.com');
+    }
+  }
   const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('groq_key')}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: GROQ_MODEL,
       messages: [
