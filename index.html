@@ -307,7 +307,7 @@
     <div id="view-btns">
       <div class="btn-row">
         <button class="btn btn-secondary" id="btn-edit-gdd">✏️ Редактировать</button>
-        <button class="btn btn-primary" id="btn-gen-art">🎨 Сгенерировать арт</button>
+        <button class="btn btn-primary" id="btn-gen-art" style="opacity:0.5;cursor:not-allowed" disabled>🎨 Сгенерировать арт (скоро)</button>
       </div>
       <div class="btn-row" style="margin-top:8px">
         <button class="btn btn-ghost" id="btn-download-gdd">💾 Скачать документ</button>
@@ -315,21 +315,13 @@
       </div>
     </div>
     
-    <!-- Блок с промптом для арта -->
+    <!-- Промпт для арта (картинка скоро) -->
     <div id="art-result" style="display:none;margin-top:16px">
       <div class="card" style="padding:16px">
-        <div style="font-size:13px;color:#64748b;margin-bottom:8px;font-weight:600;letter-spacing:.5px">🎨 КОНЦЕПТ-АРТ ИГРЫ</div>
-        <div id="art-img-wrap" style="text-align:center;min-height:200px;display:flex;align-items:center;justify-content:center">
-          <div id="art-loading" style="color:#64748b;font-size:14px">Генерирую изображение...</div>
-          <img id="art-img" style="display:none;width:100%;border-radius:8px;border:1px solid #2a2a3a" alt="Game concept art"/>
-        </div>
-        <div style="font-size:12px;color:#374151;margin-top:10px;padding:8px;background:#0d0d14;border-radius:6px;border:1px solid #1a1a2a">
-          <span style="color:#4b5563">Промпт: </span><span id="art-prompt-text" style="color:#6b7280"></span>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn btn-ghost" id="btn-copy-prompt" style="flex:1">📋 Копировать промпт</button>
-          <button class="btn btn-ghost" id="btn-regen-art" style="flex:1">🔄 Перегенерировать</button>
-        </div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:8px;font-weight:600;letter-spacing:.5px">🎨 ПРОМПТ ДЛЯ ИЛЛЮСТРАЦИИ</div>
+        <div style="font-size:12px;color:#4b5563;margin-bottom:10px">Скопируй и вставь в Sora / Midjourney / DALL-E</div>
+        <div id="art-prompt-text" style="font-size:14px;line-height:1.6;color:#e2e8f0;background:#0d0d14;border-radius:8px;padding:12px;border:1px solid #2a2a3a;white-space:pre-wrap"></div>
+        <button class="btn btn-ghost" id="btn-copy-prompt" style="margin-top:10px;width:100%">📋 Копировать промпт</button>
       </div>
     </div>
     <!-- Кнопки режима редактирования -->
@@ -545,6 +537,7 @@ document.getElementById('btn-generate-gdd').addEventListener('click', async () =
     currentGDD = await generateGDD(idea || 'Гиперказуальный раннер');
     renderGDD(currentGDD);
     showScreen(2);
+    generateArtPrompt(); // генерируем промпт для арта в фоне
   } finally {
     btn.disabled = false;
     btn.innerHTML = '✨ Сгенерировать драфт';
@@ -600,61 +593,28 @@ document.getElementById('btn-regen-gdd').addEventListener('click', async () => {
 
 
 // Генерация арт-промпта
-// Генерация арта: Groq промпт → Pollinations картинка
+// Генерация промпта для арта (картинка — скоро)
 async function doGenArt() {
   const btn = document.getElementById('btn-gen-art');
-  btn.disabled = true;
-  btn.textContent = '⏳ Генерирую...';
+  // Кнопка задизаблена, но на случай вызова из других мест:
   document.getElementById('art-result').style.display = 'block';
-  document.getElementById('art-loading').style.display = 'block';
-  document.getElementById('art-img').style.display = 'none';
-
-  try {
-    const prompt = await groqCall(
-      `You are a game art director. Write an image generation prompt in English for this game. Style: stylized game key art, vibrant colors, dramatic lighting, show core gameplay or main character, specify art style (pixel art/cartoon/realistic/isometric). No text or UI. Output ONLY the prompt, 1-2 sentences.`,
-      `Game Design Document:\n${currentGDD}`
-    );
-
-    document.getElementById('art-prompt-text').textContent = prompt;
-
-    const encoded = encodeURIComponent(prompt + ', game concept art, high quality, vibrant colors');
-    const seed = Math.floor(Math.random() * 99999);
-    
-    // Pollinations.ai — бесплатно, без ключа
-    document.getElementById('art-loading').textContent = '⏳ Генерирую изображение...';
-    const encodedPrompt = encodeURIComponent(prompt + ', game concept art, vibrant colors, detailed illustration');
-    const artSeed = Math.floor(Math.random() * 999999);
-    const imgUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=500&seed=${artSeed}&nologo=true&enhance=true`;
-    
-    await new Promise((resolve, reject) => {
-      const img = document.getElementById('art-img');
-      const timeout = setTimeout(() => reject(new Error('Timeout — сервис не ответил за 40 секунд')), 40000);
-      img.onload = () => { clearTimeout(timeout); resolve(); };
-      img.onerror = () => {
-        clearTimeout(timeout);
-        // Пробуем без enhance
-        const fallbackUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&seed=${artSeed+1}&nologo=true`;
-        const timeout2 = setTimeout(() => reject(new Error('Pollinations недоступен, попробуй позже')), 30000);
-        img.onload = () => { clearTimeout(timeout2); resolve(); };
-        img.onerror = () => { clearTimeout(timeout2); reject(new Error('Не удалось загрузить изображение')); };
-        img.src = fallbackUrl;
-      };
-      img.src = imgUrl;
-    });
-    document.getElementById('art-loading').style.display = 'none';
-    document.getElementById('art-img').style.display = 'block';
-    document.getElementById('art-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  } catch(e) {
-    alert('Ошибка: ' + e.message);
-    document.getElementById('art-result').style.display = 'none';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '🎨 Сгенерировать арт';
-  }
+  document.getElementById('art-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-document.getElementById('btn-gen-art').addEventListener('click', doGenArt);
-document.getElementById('btn-regen-art').addEventListener('click', doGenArt);
+// Генерация промпта при нажатии скрытой кнопки (на будущее)
+
+// btn-gen-art disabled, промпт генерируется автоматически после GDD
+async function generateArtPrompt() {
+  if (!currentGDD) return;
+  try {
+    const p = await groqCall(
+      `You are a game art director. Write an image generation prompt in English for Sora/Midjourney/DALL-E. Style: stylized game key art, vibrant colors, dramatic lighting. No text or UI. Output ONLY the prompt, 1-2 sentences.`,
+      `Game Design Document:\n${currentGDD}`
+    );
+    document.getElementById('art-prompt-text').textContent = p;
+    document.getElementById('art-result').style.display = 'block';
+  } catch(e) { /* silent */ }
+}
 
 document.getElementById('btn-copy-prompt').addEventListener('click', () => {
   const text = document.getElementById('art-prompt-text').textContent;
