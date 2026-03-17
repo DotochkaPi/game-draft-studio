@@ -622,7 +622,7 @@ async function doGenArt() {
     
     // Together.ai FLUX генерация
     document.getElementById('art-loading').textContent = '⏳ Генерирую изображение (FLUX)...';
-    const togetherKey = localStorage.getItem('together_key') || 'key_CZ9MV5qeTDkxgFGbqb6bN';
+    const togetherKey = localStorage.getItem('together_key') || 'tgp_v1_E-dnZLy6qy8LSBSX2r3Wv2qAr6_nAme-E5G1dycXIj4';
     const imgResp = await fetch('https://api.together.xyz/v1/images/generations', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${togetherKey}`, 'Content-Type': 'application/json' },
