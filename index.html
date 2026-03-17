@@ -620,28 +620,29 @@ async function doGenArt() {
     const encoded = encodeURIComponent(prompt + ', game concept art, high quality, vibrant colors');
     const seed = Math.floor(Math.random() * 99999);
     
-    // Together.ai FLUX генерация
-    document.getElementById('art-loading').textContent = '⏳ Генерирую изображение (FLUX)...';
-    const togetherKey = localStorage.getItem('together_key') || 'tgp_v1_RG7pLGuqoABHNimnwjnST9JaEPUO2pMXcEfLdrI5Zno';
-    const imgResp = await fetch('https://api.together.xyz/v1/images/generations', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${togetherKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'black-forest-labs/FLUX.1-schnell-Free',
-        prompt: prompt + ', game concept art, high quality, vibrant colors, detailed',
-        width: 800, height: 500, steps: 4, n: 1
-      })
+    // Pollinations.ai — бесплатно, без ключа
+    document.getElementById('art-loading').textContent = '⏳ Генерирую изображение...';
+    const encodedPrompt = encodeURIComponent(prompt + ', game concept art, vibrant colors, detailed illustration');
+    const artSeed = Math.floor(Math.random() * 999999);
+    const imgUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=500&seed=${artSeed}&nologo=true&enhance=true`;
+    
+    await new Promise((resolve, reject) => {
+      const img = document.getElementById('art-img');
+      const timeout = setTimeout(() => reject(new Error('Timeout — сервис не ответил за 40 секунд')), 40000);
+      img.onload = () => { clearTimeout(timeout); resolve(); };
+      img.onerror = () => {
+        clearTimeout(timeout);
+        // Пробуем без enhance
+        const fallbackUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&seed=${artSeed+1}&nologo=true`;
+        const timeout2 = setTimeout(() => reject(new Error('Pollinations недоступен, попробуй позже')), 30000);
+        img.onload = () => { clearTimeout(timeout2); resolve(); };
+        img.onerror = () => { clearTimeout(timeout2); reject(new Error('Не удалось загрузить изображение')); };
+        img.src = fallbackUrl;
+      };
+      img.src = imgUrl;
     });
-    if (!imgResp.ok) {
-      const err = await imgResp.text();
-      throw new Error('Ошибка генерации: ' + imgResp.status + ' ' + err.substring(0, 100));
-    }
-    const imgData = await imgResp.json();
-    const imgUrl = imgData.data[0].url;
-    const img = document.getElementById('art-img');
-    img.src = imgUrl;
     document.getElementById('art-loading').style.display = 'none';
-    img.style.display = 'block';
+    document.getElementById('art-img').style.display = 'block';
     document.getElementById('art-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } catch(e) {
     alert('Ошибка: ' + e.message);
