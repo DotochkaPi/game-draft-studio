@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎮 Game Draft Studio</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0f;
+      color: #e2e8f0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    /* ── SCREEN TRANSITIONS ── */
+    .screen {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.35s ease;
+    }
+    .screen.active {
+      display: block;
+      opacity: 1;
+    }
+    .screen.fade-in {
+      animation: fadeIn 0.35s ease forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── HEADER ── */
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-top: 12px;
+    }
+    .header h1 {
+      font-size: clamp(1.6rem, 5vw, 2.2rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .header p {
+      color: #64748b;
+      font-size: 0.95rem;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: #12121a;
+      border: 1px solid #2a2a3a;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    /* ── TEXTAREA ── */
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      background: #0d0d14;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-family: inherit;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      padding: 14px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: #21c55d; }
+    textarea::placeholder { color: #3d4a5c; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      text-decoration: none;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: #21c55d;
+      color: #0a0a0f;
+      width: 100%;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: 0.9; }
+
+    .btn-secondary {
+      background: #1a1a28;
+      color: #e2e8f0;
+      border: 1px solid #2a2a3a;
+      flex: 1;
+    }
+    .btn-secondary:hover:not(:disabled) { background: #22223a; }
+
+    .btn-ghost {
+      background: transparent;
+      color: #64748b;
+      border: 1px solid #2a2a3a;
+      width: 100%;
+      margin-top: 8px;
+    }
+    .btn-ghost:hover { color: #e2e8f0; border-color: #3d4a5c; }
+
+    .btn-row {
+      display: flex;
+      gap: 12px;
+    }
+    .btn-row .btn { flex: 1; }
+
+    /* ── SPINNER ── */
+    .spinner-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 48px 0;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #2a2a3a;
+      border-top-color: #21c55d;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-label {
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+
+    /* ── GDD CARD ── */
+    .gdd-content {
+      white-space: pre-wrap;
+      line-height: 1.75;
+      font-size: 0.93rem;
+      color: #cbd5e1;
+    }
+    .gdd-content .section-line {
+      display: block;
+      margin-top: 18px;
+      margin-bottom: 4px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+    .gdd-content .section-line:first-child { margin-top: 0; }
+    .gdd-content .bullet {
+      display: block;
+      padding-left: 4px;
+      color: #94a3b8;
+    }
+    .gdd-content .bullet::before {
+      content: '▸ ';
+      color: #21c55d;
+    }
+    .gdd-content .body-text {
+      display: block;
+      color: #94a3b8;
+    }
+
+    .gdd-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #21c55d;
+      margin-bottom: 16px;
+    }
+
+    /* ── PROTOTYPE IFRAME ── */
+    .proto-wrap {
+      background: #12121a;
+      border: 1px solid #2a2a3a;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .proto-label {
+      padding: 12px 16px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #64748b;
+      border-bottom: 1px solid #2a2a3a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .proto-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #21c55d;
+      box-shadow: 0 0 6px #21c55d88;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    iframe#proto-frame {
+      display: block;
+      width: 100%;
+      height: 480px;
+      border: none;
+    }
+
+    /* ── STEP INDICATOR ── */
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+    .step-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #2a2a3a;
+      transition: background 0.3s, transform 0.3s;
+    }
+    .step-dot.active { background: #21c55d; transform: scale(1.3); }
+    .step-dot.done { background: #155c35; }
+    .step-line {
+      width: 32px;
+      height: 2px;
+      background: #2a2a3a;
+      border-radius: 1px;
+      transition: background 0.3s;
+    }
+    .step-line.done { background: #155c35; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- STEP INDICATOR -->
+  <div class="step-indicator">
+    <div class="step-dot active" id="dot-1"></div>
+    <div class="step-line" id="line-12"></div>
+    <div class="step-dot" id="dot-2"></div>
+    <div class="step-line" id="line-23"></div>
+    <div class="step-dot" id="dot-3"></div>
+  </div>
+
+  <!-- ══════════════════════════════ STEP 1 ══════════════════════════════ -->
+  <div class="screen active fade-in" id="screen-1">
+    <div class="header">
+      <h1>🎮 Game Draft Studio</h1>
+      <p>Опиши идею — получи драфт игры и прототип</p>
+    </div>
+    <div class="card">
+      <textarea
+        id="idea-input"
+        placeholder="Например: простая гиперказуальная игра где нужно уворачиваться от препятствий на трёх полосах"
+      ></textarea>
+    </div>
+    <button class="btn btn-primary" id="btn-generate-gdd">✨ Сгенерировать драфт</button>
+  </div>
+
+  <!-- ══════════════════════════════ STEP 2 ══════════════════════════════ -->
+  <div class="screen" id="screen-2">
+    <div class="header">
+      <h1>🎮 Game Draft Studio</h1>
+      <p>Ваш GDD-драфт готов</p>
+    </div>
+    <div class="card">
+      <div class="gdd-label">📄 Game Design Document</div>
+      <div class="gdd-content" id="gdd-output"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="btn-back-to-1">✏️ Редактировать описание</button>
+      <button class="btn btn-primary" id="btn-generate-proto">🚀 Сгенерировать прототип</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════ STEP 3 ══════════════════════════════ -->
+  <div class="screen" id="screen-3">
+    <div class="header">
+      <h1>🎮 Game Draft Studio</h1>
+      <p>HTML5 Прототип</p>
+    </div>
+    <div id="proto-loading" class="spinner-wrap">
+      <div class="spinner"></div>
+      <span class="spinner-label">Генерирую прототип...</span>
+    </div>
+    <div id="proto-result" style="display:none">
+      <div class="proto-wrap">
+        <div class="proto-label">
+          <span class="proto-dot"></span>
+          Live Prototype
+        </div>
+        <iframe id="proto-frame" sandbox="allow-scripts allow-same-origin"></iframe>
+      </div>
+      <button class="btn btn-ghost" id="btn-restart">↩ Начать заново</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+//  UTILITIES
+// ─────────────────────────────────────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function showScreen(n) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active', 'fade-in'));
+  const el = document.getElementById('screen-' + n);
+  el.classList.add('active');
+  requestAnimationFrame(() => el.classList.add('fade-in'));
+  // update step dots
+  for (let i = 1; i <= 3; i++) {
+    const dot = document.getElementById('dot-' + i);
+    dot.classList.toggle('active', i === n);
+    dot.classList.toggle('done', i < n);
+  }
+  document.getElementById('line-12').classList.toggle('done', n > 1);
+  document.getElementById('line-23').classList.toggle('done', n > 2);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LLM STUBS — swap these for real API calls later
+// ─────────────────────────────────────────────────────────────
+
+async function generateGDD(idea) {
+  // STUB — replace with real API call later
+  await sleep(1500);
+  return `🎯 Концепт
+${idea.trim() || 'Гиперказуальный раннер'} — динамичная гиперказуальная игра для мобильных устройств.
+
+🎮 Core Loop
+• Игрок управляет персонажем на трёх полосах
+• Препятствия появляются случайно с нарастающей скоростью
+• Очки начисляются за каждую пройденную секунду и собранные монеты
+• Сложность нарастает со временем — больше препятствий, выше скорость
+
+👥 Целевая аудитория
+Казуальные игроки 14–35 лет, мобильный сегмент.
+
+📱 Платформа
+Mobile (iOS/Android), Web
+
+💰 Монетизация
+Rewarded Ads + опциональный IAP для скинов персонажа
+
+🔧 Ключевые механики
+• Свайп влево/вправо или тап по зонам для смены полосы
+• Автоматическое движение вперёд с ускорением
+• Сбор монет для рекордной таблицы
+• Бонусные усилители (щит, магнит, замедление)
+• Система лучшего результата с локальным сохранением`;
+}
+
+async function generatePrototype(gdd) {
+  // STUB — replace with real API call later
+  await sleep(2000);
+  // Returns a complete playable HTML5 game string
+  return PROTOTYPE_HTML;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  GDD RENDERER
+// ─────────────────────────────────────────────────────────────
+function renderGDD(text) {
+  const container = document.getElementById('gdd-output');
+  container.innerHTML = '';
+  const lines = text.split('\n');
+  lines.forEach(line => {
+    const span = document.createElement('span');
+    if (/^[🎯🎮👥📱💰🔧]/.test(line.trim())) {
+      span.className = 'section-line';
+      span.textContent = line.trim();
+    } else if (/^[•\-]/.test(line.trim())) {
+      span.className = 'bullet';
+      span.textContent = line.replace(/^[•\-]\s*/, '').trim();
+    } else if (line.trim()) {
+      span.className = 'body-text';
+      span.textContent = line.trim();
+    } else {
+      return; // skip blank lines (handled by margins)
+    }
+    container.appendChild(span);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  BUTTON HANDLERS
+// ─────────────────────────────────────────────────────────────
+let currentGDD = '';
+
+document.getElementById('btn-generate-gdd').addEventListener('click', async () => {
+  const idea = document.getElementById('idea-input').value.trim();
+  const btn = document.getElementById('btn-generate-gdd');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0"></div> Генерирую...';
+
+  try {
+    currentGDD = await generateGDD(idea || 'Гиперказуальный раннер');
+    renderGDD(currentGDD);
+    showScreen(2);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✨ Сгенерировать драфт';
+  }
+});
+
+document.getElementById('btn-back-to-1').addEventListener('click', () => {
+  showScreen(1);
+});
+
+document.getElementById('btn-generate-proto').addEventListener('click', async () => {
+  showScreen(3);
+  document.getElementById('proto-loading').style.display = 'flex';
+  document.getElementById('proto-result').style.display = 'none';
+
+  const protoHTML = await generatePrototype(currentGDD);
+
+  const frame = document.getElementById('proto-frame');
+  frame.srcdoc = protoHTML;
+
+  document.getElementById('proto-loading').style.display = 'none';
+  document.getElementById('proto-result').style.display = 'block';
+});
+
+document.getElementById('btn-restart').addEventListener('click', () => {
+  document.getElementById('idea-input').value = '';
+  document.getElementById('proto-frame').srcdoc = '';
+  showScreen(1);
+});
+
+// ─────────────────────────────────────────────────────────────
+//  PROTOTYPE HTML (3-lane runner, fully playable, no deps)
+// ─────────────────────────────────────────────────────────────
+const PROTOTYPE_HTML = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Lane Runner</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0a0a0f; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; overflow:hidden; font-family:system-ui,sans-serif; }
+  canvas { display:block; border-radius:8px; touch-action:none; }
+  #ui { position:absolute; top:0; left:0; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
+  #overlay { background:rgba(10,10,15,0.88); border-radius:12px; padding:32px 40px; text-align:center; pointer-events:all; border:1px solid #2a2a3a; }
+  #overlay h2 { color:#e2e8f0; font-size:1.5rem; margin-bottom:8px; }
+  #overlay p { color:#64748b; margin-bottom:20px; font-size:0.9rem; }
+  #overlay button { background:#21c55d; color:#0a0a0f; border:none; padding:12px 32px; border-radius:8px; font-size:1rem; font-weight:700; cursor:pointer; border-radius:8px; }
+  #overlay button:active { opacity:0.85; }
+  #score-display { position:absolute; top:12px; left:50%; transform:translateX(-50%); color:#e2e8f0; font-size:1rem; font-weight:700; background:rgba(10,10,15,0.6); padding:6px 16px; border-radius:20px; pointer-events:none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="score-display" style="display:none">⭐ <span id="score-val">0</span></div>
+<div id="ui">
+  <div id="overlay">
+    <h2>🎮 Lane Runner</h2>
+    <p>Уворачивайся от препятствий!<br>← → или свайп для смены полосы</p>
+    <button id="start-btn">▶ Старт</button>
+  </div>
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const overlay = document.getElementById('overlay');
+const scoreVal = document.getElementById('score-val');
+const scoreDisplay = document.getElementById('score-display');
+
+// Responsive canvas
+function resize() {
+  const maxW = Math.min(window.innerWidth, 360);
+  const maxH = Math.min(window.innerHeight, 580);
+  canvas.width  = maxW;
+  canvas.height = maxH;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── State ──
+const LANES = 3;
+let laneW, laneX;
+let player, obstacles, coins, particles;
+let speed, score, bestScore, frame, alive, started;
+let touchStartX = 0;
+
+function getLaneX() {
+  laneW = canvas.width / LANES;
+  return [laneW*0.5, laneW*1.5, laneW*2.5];
+}
+
+function init() {
+  laneX = getLaneX();
+  player = { lane: 1, x: laneX[1], y: canvas.height - 80, w: 28, h: 42, targetX: laneX[1], col: '#21c55d' };
+  obstacles = [];
+  coins = [];
+  particles = [];
+  speed = 3.5;
+  score = 0;
+  frame = 0;
+  alive = true;
+}
+
+// ── Draw helpers ──
+function roundRect(x,y,w,h,r,fill) {
+  ctx.beginPath();
+  ctx.roundRect(x-w/2, y-h/2, w, h, r);
+  ctx.fillStyle = fill;
+  ctx.fill();
+}
+
+function drawLanes() {
+  // background
+  ctx.fillStyle = '#0f0f18';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // road
+  ctx.fillStyle = '#13131e';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // lane dividers (dashed, animated)
+  ctx.strokeStyle = '#1e2030';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([24,18]);
+  ctx.lineDashOffset = -(frame * speed * 0.7) % 42;
+  for (let i=1; i<LANES; i++) {
+    ctx.beginPath();
+    ctx.moveTo(laneW*i, 0);
+    ctx.lineTo(laneW*i, canvas.height);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+}
+
+function drawPlayer() {
+  // glow
+  const grd = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, 30);
+  grd.addColorStop(0, '#21c55d44');
+  grd.addColorStop(1, 'transparent');
+  ctx.fillStyle = grd;
+  ctx.fillRect(player.x-30, player.y-30, 60, 60);
+  // body
+  roundRect(player.x, player.y, player.w, player.h, 6, '#21c55d');
+  // visor
+  roundRect(player.x, player.y - player.h*0.15, player.w*0.65, player.h*0.28, 4, '#0a2e1a');
+  // wheels
+  ctx.fillStyle = '#155c35';
+  roundRect(player.x - player.w*0.36, player.y + player.h*0.32, 10, 10, 3, '#155c35');
+  roundRect(player.x + player.w*0.36, player.y + player.h*0.32, 10, 10, 3, '#155c35');
+}
+
+function drawObstacles() {
+  obstacles.forEach(o => {
+    roundRect(o.x, o.y, o.w, o.h, 6, o.col);
+    // highlight edge
+    ctx.strokeStyle = o.bright;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(o.x-o.w/2+2, o.y-o.h/2+2, o.w-4, o.h-4, 4);
+    ctx.stroke();
+  });
+}
+
+function drawCoins() {
+  coins.forEach(c => {
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 9, 0, Math.PI*2);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fill();
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#fef3c7';
+    ctx.font = 'bold 9px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('$', c.x, c.y);
+  });
+}
+
+function drawParticles() {
+  particles.forEach((p,i) => {
+    ctx.globalAlpha = p.life / p.maxLife;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fillStyle = p.col;
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+function spawnParticles(x, y, col, count=8) {
+  for (let i=0; i<count; i++) {
+    const angle = (Math.PI*2/count)*i + Math.random()*0.5;
+    const spd = 1.5 + Math.random()*2.5;
+    particles.push({ x, y, vx: Math.cos(angle)*spd, vy: Math.sin(angle)*spd - 1, r: 3+Math.random()*3, col, life: 30, maxLife: 30 });
+  }
+}
+
+// ── Game loop ──
+function update() {
+  if (!alive) return;
+  frame++;
+  laneX = getLaneX();
+  speed = 3.5 + Math.min(frame/300, 4);
+
+  // smooth player movement
+  player.x += (player.targetX - player.x) * 0.18;
+
+  // spawn obstacles
+  const gap = Math.max(38, 70 - frame/60);
+  if (frame % Math.floor(gap) === 0) {
+    const lane = Math.floor(Math.random()*LANES);
+    obstacles.push({
+      lane, x: laneX[lane], y: -30,
+      w: 34 + Math.random()*16, h: 34 + Math.random()*16,
+      col: ['#ef4444','#f97316','#8b5cf6'][Math.floor(Math.random()*3)],
+      bright: ['#fca5a5','#fdba74','#c4b5fd'][Math.floor(Math.random()*3)]
+    });
+  }
+
+  // spawn coins
+  if (frame % 90 === 45) {
+    const lane = Math.floor(Math.random()*LANES);
+    coins.push({ lane, x: laneX[lane], y: -10 });
+  }
+
+  // move obstacles
+  obstacles.forEach(o => { o.y += speed; o.x += (laneX[o.lane] - o.x) * 0.1; });
+  obstacles = obstacles.filter(o => o.y < canvas.height + 60);
+
+  // move coins
+  coins.forEach(c => { c.y += speed; c.x += (laneX[c.lane] - c.x) * 0.1; });
+  coins = coins.filter(c => c.y < canvas.height + 40);
+
+  // coin collection
+  coins = coins.filter(c => {
+    if (Math.abs(c.x - player.x) < 22 && Math.abs(c.y - player.y) < 22) {
+      score += 10;
+      spawnParticles(c.x, c.y, '#f59e0b', 6);
+      return false;
+    }
+    return true;
+  });
+
+  // collision detection
+  obstacles.forEach(o => {
+    if (Math.abs(o.x - player.x) < (o.w/2 + player.w/2 - 4) &&
+        Math.abs(o.y - player.y) < (o.h/2 + player.h/2 - 4)) {
+      alive = false;
+      spawnParticles(player.x, player.y, '#21c55d', 20);
+    }
+  });
+
+  // score
+  if (frame % 6 === 0) score++;
+
+  // particles
+  particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life--; });
+  particles = particles.filter(p => p.life > 0);
+}
+
+function draw() {
+  drawLanes();
+  drawObstacles();
+  drawCoins();
+  drawPlayer();
+  drawParticles();
+}
+
+function gameOver() {
+  if (bestScore === undefined) bestScore = 0;
+  if (score > bestScore) bestScore = score;
+  scoreDisplay.style.display = 'none';
+
+  overlay.innerHTML = \`
+    <h2>💥 Игра окончена</h2>
+    <p>Очки: <strong style="color:#21c55d">\${score}</strong><br>
+    Рекорд: <strong style="color:#f59e0b">\${bestScore}</strong></p>
+    <button id="start-btn">🔄 Играть снова</button>
+  \`;
+  overlay.style.display = 'block';
+  document.getElementById('start-btn').addEventListener('click', startGame);
+}
+
+let raf;
+function loop() {
+  update();
+  draw();
+  scoreVal.textContent = score;
+  if (!alive) { gameOver(); return; }
+  raf = requestAnimationFrame(loop);
+}
+
+function startGame() {
+  overlay.style.display = 'none';
+  scoreDisplay.style.display = 'block';
+  init();
+  if (raf) cancelAnimationFrame(raf);
+  loop();
+}
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+// ── Controls ──
+document.addEventListener('keydown', e => {
+  if (!alive) return;
+  if (e.key === 'ArrowLeft'  && player.lane > 0) { player.lane--; player.targetX = laneX[player.lane]; }
+  if (e.key === 'ArrowRight' && player.lane < LANES-1) { player.lane++; player.targetX = laneX[player.lane]; }
+});
+
+canvas.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  if (!alive) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 20) {
+    if (dx < 0 && player.lane > 0)        { player.lane--; player.targetX = laneX[player.lane]; }
+    if (dx > 0 && player.lane < LANES-1)  { player.lane++; player.targetX = laneX[player.lane]; }
+  }
+  e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('click', e => {
+  if (!alive || !started) return;
+  const x = e.clientX - canvas.getBoundingClientRect().left;
+  if (x < canvas.width / 3 && player.lane > 0)       { player.lane--; player.targetX = laneX[player.lane]; }
+  if (x > canvas.width * 2/3 && player.lane < LANES-1) { player.lane++; player.targetX = laneX[player.lane]; }
+});
+<\/script>
+</body>
+</html>`;
+
+</script>
+</body>
+</html>
