@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -307,29 +307,11 @@
     <div id="view-btns">
       <div class="btn-row">
         <button class="btn btn-secondary" id="btn-edit-gdd">✏️ Редактировать</button>
-        <button class="btn btn-primary" id="btn-gen-art">🎨 Сгенерировать арт</button>
+        <button class="btn btn-primary" id="btn-generate-proto">🚀 Сгенерировать прототип</button>
       </div>
       <div class="btn-row" style="margin-top:8px">
         <button class="btn btn-ghost" id="btn-download-gdd">💾 Скачать документ</button>
         <button class="btn btn-ghost" id="btn-new-doc-2">📄 Новый документ</button>
-      </div>
-    </div>
-    
-    <!-- Блок с промптом для арта -->
-    <div id="art-result" style="display:none;margin-top:16px">
-      <div class="card" style="padding:16px">
-        <div style="font-size:13px;color:#64748b;margin-bottom:8px;font-weight:600;letter-spacing:.5px">🎨 КОНЦЕПТ-АРТ ИГРЫ</div>
-        <div id="art-img-wrap" style="text-align:center;min-height:200px;display:flex;align-items:center;justify-content:center">
-          <div id="art-loading" style="color:#64748b;font-size:14px">Генерирую изображение...</div>
-          <img id="art-img" style="display:none;width:100%;border-radius:8px;border:1px solid #2a2a3a" alt="Game concept art"/>
-        </div>
-        <div style="font-size:12px;color:#374151;margin-top:10px;padding:8px;background:#0d0d14;border-radius:6px;border:1px solid #1a1a2a">
-          <span style="color:#4b5563">Промпт: </span><span id="art-prompt-text" style="color:#6b7280"></span>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn btn-ghost" id="btn-copy-prompt" style="flex:1">📋 Копировать промпт</button>
-          <button class="btn btn-ghost" id="btn-regen-art" style="flex:1">🔄 Перегенерировать</button>
-        </div>
       </div>
     </div>
     <!-- Кнопки режима редактирования -->
@@ -395,26 +377,13 @@ function showScreen(n) {
 // API key: from URL ?key=gsk_... or localStorage
 const _urlKey = new URLSearchParams(window.location.search).get('key');
 if (_urlKey) localStorage.setItem('groq_key', _urlKey);
+const GROQ_API_KEY = localStorage.getItem('groq_key') || '';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
-function getKey() {
-  return localStorage.getItem('groq_key') || '';
-}
-
 async function groqCall(systemPrompt, userMessage) {
-  let key = getKey();
-  if (!key) {
-    const entered = prompt('Введи Groq API ключ (бесплатно: console.groq.com → API Keys):');
-    if (entered && entered.trim().startsWith('gsk_')) {
-      localStorage.setItem('groq_key', entered.trim());
-      key = entered.trim();
-    } else {
-      throw new Error('Ключ не введён или неверный формат');
-    }
-  }
   const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+    headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: GROQ_MODEL,
       messages: [
@@ -598,60 +567,18 @@ document.getElementById('btn-regen-gdd').addEventListener('click', async () => {
   }
 });
 
+document.getElementById('btn-generate-proto').addEventListener('click', async () => {
+  showScreen(3);
+  document.getElementById('proto-loading').style.display = 'flex';
+  document.getElementById('proto-result').style.display = 'none';
 
-// Генерация арт-промпта
-// Генерация арта: Groq промпт → Pollinations картинка
-async function doGenArt() {
-  const btn = document.getElementById('btn-gen-art');
-  btn.disabled = true;
-  btn.textContent = '⏳ Генерирую...';
-  document.getElementById('art-result').style.display = 'block';
-  document.getElementById('art-loading').style.display = 'block';
-  document.getElementById('art-img').style.display = 'none';
+  const protoHTML = await generatePrototype(currentGDD);
 
-  try {
-    const prompt = await groqCall(
-      `You are a game art director. Write an image generation prompt in English for this game. Style: stylized game key art, vibrant colors, dramatic lighting, show core gameplay or main character, specify art style (pixel art/cartoon/realistic/isometric). No text or UI. Output ONLY the prompt, 1-2 sentences.`,
-      `Game Design Document:\n${currentGDD}`
-    );
+  const frame = document.getElementById('proto-frame');
+  frame.srcdoc = protoHTML;
 
-    document.getElementById('art-prompt-text').textContent = prompt;
-
-    const encoded = encodeURIComponent(prompt + ', game concept art, high quality');
-    const seed = Math.floor(Math.random() * 99999);
-    const imgUrl = `https://image.pollinations.ai/prompt/${encoded}?width=800&height=500&seed=${seed}&nologo=true`;
-
-    const img = document.getElementById('art-img');
-    img.onload = () => {
-      document.getElementById('art-loading').style.display = 'none';
-      img.style.display = 'block';
-    };
-    img.onerror = () => {
-      document.getElementById('art-loading').textContent = '⚠️ Ошибка загрузки. Попробуй ещё раз.';
-    };
-    img.src = imgUrl;
-    document.getElementById('art-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  } catch(e) {
-    alert('Ошибка: ' + e.message);
-    document.getElementById('art-result').style.display = 'none';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '🎨 Сгенерировать арт';
-  }
-}
-
-document.getElementById('btn-gen-art').addEventListener('click', doGenArt);
-document.getElementById('btn-regen-art').addEventListener('click', doGenArt);
-
-});
-
-document.getElementById('btn-copy-prompt').addEventListener('click', () => {
-  const text = document.getElementById('art-prompt-text').textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = document.getElementById('btn-copy-prompt');
-    btn.textContent = '✅ Скопировано!';
-    setTimeout(() => { btn.textContent = '📋 Копировать промпт'; }, 2000);
-  });
+  document.getElementById('proto-loading').style.display = 'none';
+  document.getElementById('proto-result').style.display = 'block';
 });
 
 // Скачать документ
