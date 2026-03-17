@@ -296,10 +296,22 @@
     <div class="card">
       <div class="gdd-label">📄 Game Design Document</div>
       <div class="gdd-content" id="gdd-output"></div>
+      <!-- Редактор (скрыт по умолчанию) -->
+      <div id="edit-area" style="display:none;margin-top:12px">
+        <textarea id="gdd-textarea" style="width:100%;min-height:260px;background:#0d0d14;color:#e2e8f0;border:1px solid #2a2a3a;border-radius:8px;padding:14px;font-size:14px;font-family:system-ui;line-height:1.6;resize:vertical;outline:none;"></textarea>
+        <div style="margin-top:8px;font-size:13px;color:#64748b;margin-bottom:6px">💬 Комментарий к правкам (необязательно)</div>
+        <input id="edit-comment" type="text" placeholder="Например: сделай механику сложнее, добавь PvP элемент..." style="width:100%;background:#0d0d14;color:#e2e8f0;border:1px solid #2a2a3a;border-radius:8px;padding:12px 14px;font-size:14px;font-family:system-ui;outline:none;">
+      </div>
     </div>
-    <div class="btn-row">
-      <button class="btn btn-secondary" id="btn-edit-gdd">✏️ Редактировать драфт</button>
+    <!-- Кнопки режима просмотра -->
+    <div id="view-btns" class="btn-row">
+      <button class="btn btn-secondary" id="btn-edit-gdd">✏️ Редактировать</button>
       <button class="btn btn-primary" id="btn-generate-proto">🚀 Сгенерировать прототип</button>
+    </div>
+    <!-- Кнопки режима редактирования -->
+    <div id="edit-btns" class="btn-row" style="display:none">
+      <button class="btn btn-secondary" id="btn-cancel-edit">✕ Отмена</button>
+      <button class="btn btn-primary" id="btn-regen-gdd">🔄 Перегенерировать</button>
     </div>
   </div>
 
@@ -498,27 +510,50 @@ document.getElementById('btn-generate-gdd').addEventListener('click', async () =
   }
 });
 
-document.getElementById('btn-edit-gdd').addEventListener('click', () => {
-  const output = document.getElementById('gdd-output');
-  const editBtn = document.getElementById('btn-edit-gdd');
+function enterEditMode() {
+  document.getElementById('gdd-textarea').value = currentGDD;
+  document.getElementById('edit-comment').value = '';
+  document.getElementById('edit-area').style.display = 'block';
+  document.getElementById('view-btns').style.display = 'none';
+  document.getElementById('edit-btns').style.display = 'flex';
+  document.getElementById('gdd-textarea').focus();
+}
 
-  if (editBtn.dataset.editing === 'true') {
-    // Сохраняем
-    const textarea = output.querySelector('textarea');
-    currentGDD = textarea.value;
+function exitEditMode() {
+  document.getElementById('edit-area').style.display = 'none';
+  document.getElementById('view-btns').style.display = 'flex';
+  document.getElementById('edit-btns').style.display = 'none';
+}
+
+document.getElementById('btn-edit-gdd').addEventListener('click', enterEditMode);
+
+document.getElementById('btn-cancel-edit').addEventListener('click', exitEditMode);
+
+document.getElementById('btn-regen-gdd').addEventListener('click', async () => {
+  const editedGDD = document.getElementById('gdd-textarea').value.trim();
+  const comment = document.getElementById('edit-comment').value.trim();
+  const btn = document.getElementById('btn-regen-gdd');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span style="opacity:.6">Генерирую...</span>';
+
+  try {
+    const prompt = comment
+      ? `Вот отредактированный GDD:\n${editedGDD}\n\nКомментарий пользователя: ${comment}\n\nУлучши GDD с учётом комментария, сохранив формат.`
+      : `Вот отредактированный GDD:\n${editedGDD}\n\nПриведи его к стандартному формату GDD, улучши формулировки, сохрани суть.`;
+
+    const newGDD = await groqCall(
+      `Ты Concept Designer. Доработай GDD-драфт на русском языке. Сохрани строго тот же формат с emoji-заголовками (🎯 🎮 👥 📱 💰 🔧 ⚡). Только текст GDD, без вступлений.`,
+      prompt
+    );
+    currentGDD = newGDD;
     renderGDD(currentGDD);
-    editBtn.textContent = '✏️ Редактировать драфт';
-    editBtn.dataset.editing = 'false';
-  } else {
-    // Переходим в режим редактирования
-    output.innerHTML = '';
-    const textarea = document.createElement('textarea');
-    textarea.value = currentGDD;
-    textarea.style.cssText = 'width:100%;min-height:280px;background:#0d0d14;color:#e2e8f0;border:1px solid #2a2a3a;border-radius:8px;padding:14px;font-size:14px;font-family:system-ui;line-height:1.6;resize:vertical;outline:none;';
-    output.appendChild(textarea);
-    textarea.focus();
-    editBtn.textContent = '💾 Сохранить';
-    editBtn.dataset.editing = 'true';
+    exitEditMode();
+  } catch(e) {
+    alert('Ошибка: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔄 Перегенерировать';
   }
 });
 
