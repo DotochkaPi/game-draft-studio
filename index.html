@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -307,11 +307,20 @@
     <div id="view-btns">
       <div class="btn-row">
         <button class="btn btn-secondary" id="btn-edit-gdd">✏️ Редактировать</button>
-        <button class="btn btn-primary" id="btn-generate-proto">🚀 Сгенерировать прототип</button>
+        <button class="btn btn-primary" id="btn-gen-art">🎨 Сгенерировать арт</button>
       </div>
       <div class="btn-row" style="margin-top:8px">
         <button class="btn btn-ghost" id="btn-download-gdd">💾 Скачать документ</button>
         <button class="btn btn-ghost" id="btn-new-doc-2">📄 Новый документ</button>
+      </div>
+    </div>
+    
+    <!-- Блок с промптом для арта -->
+    <div id="art-result" style="display:none;margin-top:16px">
+      <div class="card" style="padding:16px">
+        <div style="font-size:13px;color:#64748b;margin-bottom:8px;font-weight:600;letter-spacing:.5px">🎨 ПРОМПТ ДЛЯ SORA / MIDJOURNEY / DALL-E</div>
+        <div id="art-prompt-text" style="font-size:14px;line-height:1.6;color:#e2e8f0;white-space:pre-wrap;word-break:break-word;background:#0d0d14;border-radius:8px;padding:12px;border:1px solid #2a2a3a"></div>
+        <button class="btn btn-ghost" id="btn-copy-prompt" style="margin-top:10px;width:100%">📋 Копировать промпт</button>
       </div>
     </div>
     <!-- Кнопки режима редактирования -->
@@ -565,6 +574,51 @@ document.getElementById('btn-regen-gdd').addEventListener('click', async () => {
     btn.disabled = false;
     btn.innerHTML = '🔄 Перегенерировать';
   }
+});
+
+
+// Генерация арт-промпта
+document.getElementById('btn-gen-art').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-gen-art');
+  btn.disabled = true;
+  btn.textContent = '⏳ Генерирую...';
+  document.getElementById('art-result').style.display = 'none';
+
+  try {
+    const prompt = await groqCall(
+      `You are a professional art director for game concept art. Based on the game design document, write a detailed image generation prompt in English for Sora, Midjourney, or DALL-E.
+
+Style requirements:
+- Stylized game key art or concept art
+- Vibrant colors, dramatic lighting
+- Show the core gameplay moment or main character in action
+- Include environment/world details
+- Specify art style (pixel art / cartoon / realistic / isometric etc based on the game type)
+- No text or UI elements in the image
+- 2-3 sentences, dense with visual detail
+
+Output ONLY the prompt, nothing else.`,
+      `Game Design Document:\n${currentGDD}`
+    );
+
+    document.getElementById('art-prompt-text').textContent = prompt;
+    document.getElementById('art-result').style.display = 'block';
+    document.getElementById('art-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch(e) {
+    alert('Ошибка: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🎨 Сгенерировать арт';
+  }
+});
+
+document.getElementById('btn-copy-prompt').addEventListener('click', () => {
+  const text = document.getElementById('art-prompt-text').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('btn-copy-prompt');
+    btn.textContent = '✅ Скопировано!';
+    setTimeout(() => { btn.textContent = '📋 Копировать промпт'; }, 2000);
+  });
 });
 
 document.getElementById('btn-generate-proto').addEventListener('click', async () => {
