@@ -620,35 +620,28 @@ async function doGenArt() {
     const encoded = encodeURIComponent(prompt + ', game concept art, high quality, vibrant colors');
     const seed = Math.floor(Math.random() * 99999);
     
-    // Пробуем несколько URL по очереди
-    const urls = [
-      `https://image.pollinations.ai/prompt/${encoded}?width=800&height=500&seed=${seed}&nologo=true&model=flux`,
-      `https://image.pollinations.ai/prompt/${encoded}?width=800&height=500&seed=${seed}&nologo=true`,
-      `https://image.pollinations.ai/prompt/${encoded}?width=512&height=512&seed=${seed+1}&nologo=true`,
-    ];
-    
-    let loaded = false;
-    for (let i = 0; i < urls.length; i++) {
-      document.getElementById('art-loading').textContent = `⏳ Генерирую изображение... попытка ${i+1}/${urls.length}`;
-      try {
-        await new Promise((resolve, reject) => {
-          const ti = new Image();
-          const to = setTimeout(() => reject(new Error('timeout')), 25000);
-          ti.onload = () => { clearTimeout(to); resolve(); };
-          ti.onerror = () => { clearTimeout(to); reject(new Error('err')); };
-          ti.src = urls[i];
-        });
-        const img = document.getElementById('art-img');
-        img.src = urls[i];
-        document.getElementById('art-loading').style.display = 'none';
-        img.style.display = 'block';
-        loaded = true;
-        break;
-      } catch(e) {
-        if (i < urls.length - 1) await new Promise(r => setTimeout(r, 2000));
-      }
+    // Together.ai FLUX генерация
+    document.getElementById('art-loading').textContent = '⏳ Генерирую изображение (FLUX)...';
+    const togetherKey = localStorage.getItem('together_key') || 'key_CZ9MV5qeTDkxgFGbqb6bN';
+    const imgResp = await fetch('https://api.together.xyz/v1/images/generations', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${togetherKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'black-forest-labs/FLUX.1-schnell-Free',
+        prompt: prompt + ', game concept art, high quality, vibrant colors, detailed',
+        width: 800, height: 500, steps: 4, n: 1
+      })
+    });
+    if (!imgResp.ok) {
+      const err = await imgResp.text();
+      throw new Error('Ошибка генерации: ' + imgResp.status + ' ' + err.substring(0, 100));
     }
-    if (!loaded) throw new Error('Сервис генерации изображений недоступен. Попробуй через пару минут.');
+    const imgData = await imgResp.json();
+    const imgUrl = imgData.data[0].url;
+    const img = document.getElementById('art-img');
+    img.src = imgUrl;
+    document.getElementById('art-loading').style.display = 'none';
+    img.style.display = 'block';
     document.getElementById('art-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } catch(e) {
     alert('Ошибка: ' + e.message);
