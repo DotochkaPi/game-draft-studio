@@ -352,40 +352,78 @@ function showScreen(n) {
 //  LLM STUBS — swap these for real API calls later
 // ─────────────────────────────────────────────────────────────
 
+// API key: from URL ?key=gsk_... or localStorage
+const _urlKey = new URLSearchParams(window.location.search).get('key');
+if (_urlKey) localStorage.setItem('groq_key', _urlKey);
+const GROQ_API_KEY = localStorage.getItem('groq_key') || '';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+async function groqCall(systemPrompt, userMessage) {
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ],
+      temperature: 0.8,
+      max_tokens: 1500
+    })
+  });
+  if (!resp.ok) throw new Error(`Groq error: ${resp.status}`);
+  const data = await resp.json();
+  return data.choices[0].message.content;
+}
+
 async function generateGDD(idea) {
-  // STUB — replace with real API call later
-  await sleep(1500);
-  return `🎯 Концепт
-${idea.trim() || 'Гиперказуальный раннер'} — динамичная гиперказуальная игра для мобильных устройств.
+  return await groqCall(
+    `Ты опытный геймдизайнер. Напиши короткий GDD-драфт на русском языке строго в таком формате (без лишнего текста):
+
+🎯 Концепт
+[1-2 предложения об идее игры]
 
 🎮 Core Loop
-• Игрок управляет персонажем на трёх полосах
-• Препятствия появляются случайно с нарастающей скоростью
-• Очки начисляются за каждую пройденную секунду и собранные монеты
-• Сложность нарастает со временем — больше препятствий, выше скорость
+• [шаг 1]
+• [шаг 2]
+• [шаг 3]
+• [шаг 4]
 
 👥 Целевая аудитория
-Казуальные игроки 14–35 лет, мобильный сегмент.
+[возраст, тип игроков]
 
 📱 Платформа
-Mobile (iOS/Android), Web
+[платформы]
 
 💰 Монетизация
-Rewarded Ads + опциональный IAP для скинов персонажа
+[модель монетизации]
 
 🔧 Ключевые механики
-• Свайп влево/вправо или тап по зонам для смены полосы
-• Автоматическое движение вперёд с ускорением
-• Сбор монет для рекордной таблицы
-• Бонусные усилители (щит, магнит, замедление)
-• Система лучшего результата с локальным сохранением`;
+• [механика 1]
+• [механика 2]
+• [механика 3]
+• [механика 4]`,
+    `Идея игры: ${idea}`
+  );
 }
 
 async function generatePrototype(gdd) {
-  // STUB — replace with real API call later
-  await sleep(2000);
-  // Returns a complete playable HTML5 game string
-  return PROTOTYPE_HTML;
+  const html = await groqCall(
+    `Ты разработчик HTML5 игр. Напиши ТОЛЬКО код полноценной одностраничной HTML5 игры (без объяснений, без markdown, только чистый HTML от <!DOCTYPE html> до </html>).
+Требования:
+- Весь CSS и JS inline внутри HTML
+- Без внешних зависимостей
+- Canvas-based или DOM игра
+- Управление: клавиши стрелок + touch swipe
+- Тёмный фон, счёт, game over экран с рестартом
+- Реально играбельно
+- Максимум 300 строк кода`,
+    `Создай HTML5 прототип игры на основе этого GDD:\n\n${gdd}`
+  );
+  // Извлекаем HTML если обёрнут в markdown
+  const match = html.match(/<!DOCTYPE html>[\s\S]*<\/html>/i);
+  return match ? match[0] : html;
 }
 
 // ─────────────────────────────────────────────────────────────
